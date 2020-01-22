@@ -75,8 +75,6 @@ function MiAirPurifier(log, config) {
         .on('set', this.setRotationSpeed.bind(this));
 
     this.service
-        .addOptionalCharacteristic(Characteristic.SwingMode);
-    this.service
         .getCharacteristic(Characteristic.SwingMode)
         .on('get', this.getSwingMode.bind(this))
         .on('set', this.setSwingMode.bind(this));
