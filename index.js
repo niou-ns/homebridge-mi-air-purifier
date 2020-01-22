@@ -74,6 +74,11 @@ function MiAirPurifier(log, config) {
         .on('get', this.getRotationSpeed.bind(this))
         .on('set', this.setRotationSpeed.bind(this));
 
+    this.service
+        .getCharacteristic(Characteristic.SwingMode)
+        .on('get', this.getSwingMode.bind(this))
+        .on('set', this.setSwingMode.bind(this));
+
     this.serviceInfo = new Service.AccessoryInformation();
 
     this.serviceInfo
@@ -169,6 +174,7 @@ MiAirPurifier.prototype = {
                         that.updateActiveState(mode);
                         that.updateTargetAirPurifierState(mode);
                         that.updateCurrentAirPurifierState(mode);
+                        that.updateSwingMode(mode);
                     });
 
                     // Listen to air quality change event
@@ -359,6 +365,43 @@ MiAirPurifier.prototype = {
         this.device.setFavoriteLevel(level)
             .then(mode => callback(null))
             .catch(err => callback(err));
+    },
+
+    getSwingMode: function(callback) {
+        if (!this.device) {
+            callback(new Error('No Air Purifier is discovered.'));
+            return;
+        }
+
+        const swingMode = (this.mode === 'auto') ? Characteristic.SwingMode.SWING_ENABLED : Characteristic.SwingMode.SWING_DISABLED;
+        this.log.debug('getSwingMode: Mode -> %s', this.mode);
+        callback(null, swingMode);
+
+    },
+
+    setSwingMode: function(swingMode, callback) {
+        if (!this.device) {
+            callback(new Error('No Air Purifier is discovered.'));
+            return;
+        }
+
+        const mode = (swingMode) ? 'auto' : 'silent';
+        this.mode = mode;
+
+        this.log.debug('setSwingMode: %s', mode);
+
+        this.device.setMode(mode)
+            .then(mode => callback(null))
+            .catch(err => callback(err));
+    },
+
+    updateSwingMode: function(mode) {
+        const swingMode = (mode === 'auto' || mode === 'favorite') ? Characteristic.SwingMode.SWING_ENABLED : Characteristic.SwingMode.SWING_DISABLED;
+        this.mode = mode;
+
+        this.log.debug('updateSwingMode: Mode -> %s', mode);
+
+        this.service.getCharacteristic(Characteristic.SwingMode).updateValue(swingMode);
     },
 
     getAirQuality: function(callback) {
