@@ -50,6 +50,10 @@ function MiAirPurifier(log, config) {
 
     this.service = new Service.AirPurifier(this.name);
 
+    this.service.addOptionalCharacteristic(Characteristic.SwingMode);
+    this.service.addOptionalCharacteristic(Characteristic.FilterLifeLevel);
+    this.service.addOptionalCharacteristic(Characteristic.FilterChangeIndication);
+
     this.service
         .getCharacteristic(Characteristic.Active)
         .on('get', this.getActiveState.bind(this))
@@ -78,6 +82,14 @@ function MiAirPurifier(log, config) {
         .getCharacteristic(Characteristic.SwingMode)
         .on('get', this.getSwingMode.bind(this))
         .on('set', this.setSwingMode.bind(this));
+
+    this.service
+        .getCharacteristic(Characteristic.FilterLifeLevel)
+        .on('get', this.getFilterState.bind(this));
+
+    this.service
+        .getCharacteristic(Characteristic.FilterChangeIndication)
+        .on('get', this.getFilterChangeState.bind(this));
 
     this.serviceInfo = new Service.AccessoryInformation();
 
@@ -375,6 +387,7 @@ MiAirPurifier.prototype = {
 
         const swingMode = (this.mode === 'auto') ? Characteristic.SwingMode.SWING_ENABLED : Characteristic.SwingMode.SWING_DISABLED;
         this.log.debug('getSwingMode: Mode -> %s', this.mode);
+        this.log.debug('getSwingMode: Swing Mode -> %s', swingMode);
         callback(null, swingMode);
 
     },
@@ -388,7 +401,8 @@ MiAirPurifier.prototype = {
         const mode = (swingMode) ? 'auto' : 'silent';
         this.mode = mode;
 
-        this.log.debug('setSwingMode: %s', mode);
+        this.log.debug('setSwingMode: Mode %s', mode);
+        this.log.debug('setSwingMode: Swing Mode -> %s', swingMode);
 
         this.device.setMode(mode)
             .then(mode => callback(null))
@@ -400,8 +414,27 @@ MiAirPurifier.prototype = {
         this.mode = mode;
 
         this.log.debug('updateSwingMode: Mode -> %s', mode);
+        this.log.debug('updateSwingMode: Swing Mode -> %s', swingMode);
 
         this.service.getCharacteristic(Characteristic.SwingMode).updateValue(swingMode);
+    },
+
+    getFilterState: function (callback) {
+        if(!this.device) {
+            callback(new Error('No Air Purifier is discovered.'));
+            return;
+        }
+
+        callback(null, this.device.property("filterLifeRemaining"));
+    },
+
+    getFilterChangeState: function (callback) {
+        if(!this.device) {
+            callback(new Error('No Air Purifier is discovered.'));
+            return;
+        }
+
+        callback(null, (this.device.property("filterLifeRemaining") < 5) ? Characteristic.FilterChangeIndication.CHANGE_FILTER : Characteristic.FilterChangeIndication.FILTER_OK);
     },
 
     getAirQuality: function(callback) {
